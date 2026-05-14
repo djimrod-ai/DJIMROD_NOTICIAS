@@ -30,14 +30,14 @@ if 'show_bulos' not in st.session_state:
 
 # Galería de Estilos
 TEMAS_LUJO = {
-    "✨ Oro Imperial": ("#FDF5E6", "#4A3F35", "#D4AF37"),
-    "🥈 Plata Moderna": ("#E5E4E2", "#2C3E50", "#7F8C8D"),
-    "💎 Platino Pure": ("#F5F5F5", "#1A1A1A", "#B5B7B2"),
-    "🍷 Tinto Elegante": ("#F5F5DC", "#2C3E50", "#800000"),
+    "✨ Oro Imperial": ("#FDF5E6", "#4A3F35", "#FFD700"),
+    "🥈 Plata Moderna": ("#E5E4E2", "#2C3E50", "#FFD700"),
+    "💎 Platino Pure": ("#F5F5F5", "#1A1A1A", "#FFD700"),
+    "🍷 Tinto Elegante": ("#F5F5DC", "#2C3E50", "#FFD700"),
     "👑 Azul Real": ("#002366", "#FFFFFF", "#FFD700"),
 }
 TEMAS_CORPORATIVOS = {
-    "☀️ Blanco Puro": ("#FFFFFF", "#1F2937", "#1E3A8A"),
+    "☀️ Blanco Puro": ("#FFFFFF", "#1F2937", "#FFD700"),
     "🗞️ Diario Clásico": ("#F4EBD0", "#5D4037", "#C62828"),
     "🏢 Corporativo Azul": ("#FFFFFF", "#333333", "#0056B3"),
     "🌊 Marino Profundo": ("#001F3F", "#FFFFFF", "#3B82F6"),
