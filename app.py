@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 MY_SECRET_API_KEY = "970be6d6772e48ada6ce78006d34e15f" 
 
 # =============================================================================
-# 1. SISTEMA DE DISEÑO Y ESTÉTICA (Sincronizado)
+# 1. SISTEMA DE DISEÑO Y ESTÉTICA
 # =============================================================================
 st.set_page_config(page_title="Intelligence Hub Editorial", page_icon="📰", layout="wide")
 
@@ -60,7 +60,7 @@ def aplicar_tema(bg, txt, acc):
     st.session_state.accent_color = acc
     st.rerun()
 
-# CSS optimizado para evitar errores de 'removeChild'
+# CSS simplificado para evitar el error de 'removeChild'
 st.markdown(f"""
     <style>
     .stApp {{ background-color: {st.session_state.bg_color} !important; }}
@@ -77,7 +77,8 @@ st.markdown(f"""
         color: {st.session_state.accent_color} !important;
         margin-bottom: 20px;
     }}
-    .news-card-style {{
+    /* Estilo de tarjeta simplificado para estabilidad */
+    .news-card-simple {{
         background-color: white;
         padding: 15px;
         border-radius: 10px;
@@ -91,11 +92,19 @@ st.markdown(f"""
         color: #C00000;
         font-weight: bold;
     }}
+    .bulo-card-simple {{
+        background-color: #FFF5F5;
+        padding: 15px;
+        border-radius: 10px;
+        border-left: 6px solid #FF4B4B;
+        margin-bottom: 15px;
+        color: #7F1D1D !important;
+    }}
     </style>
     """, unsafe_allow_html=True)
 
 # =============================================================================
-# 2. MOTOR DE BÚSQUEDA (Sincronización Total)
+# 2. MOTOR de BÚSQUEDA (Híbrido y Rápido)
 # =============================================================================
 RSS_FEEDS = {
     "El Mundo": "https://www.elmundo.es/rss/estC1.xml",
@@ -111,9 +120,9 @@ RSS_FEEDS = {
 def calcular_score_bulo(titulo, fuente):
     score = 0
     t = titulo.upper()
-    if any(p in t for p in ["RAZÓN POR LA QUE", "BOMBA", "SENSACIONAL", "NO CREERÁS"]): score += 2
-    if any(p in t for p in ["SÓLO HOY", "URGENTE", "INMEDIATAMENTE"]): score += 2
-    if "!!!" in t or (len([c for c in t if c.isupper()]) > 12): score += 2
+    if any(p in t for p in ["RAZÓN POR LA QUE", "LO QUE NADIE TE CUENTA", "BOMBA", "SENSACIONAL"]): score += 2
+    if any(p in t for p in ["INMEDIATAMENTE", "SÓLO HOY", "URGENTE"]): score += 2
+    if "!!!" in t or (len([c for c in t if c.isupper()]) > 10 and len(t) < 50): score += 2
     umbral = 5 if fuente in RSS_FEEDS else 3
     return score >= umbral
 
@@ -152,7 +161,7 @@ def fetch_google_news(keywords):
                 'title': entry.title, 'url': entry.link, 
                 'source': entry.source.title if hasattr(entry, 'source') else "Google News", 
                 'date': formatear_fecha(entry.published if hasattr(entry, 'published') else ""), 
-                'description': "Búsqueda en tiempo real.", 'is_bulo': calcular_score_bulo(entry.title, "Google News")
+                'description': "Sincronizado en tiempo real.", 'is_bulo': calcular_score_bulo(entry.title, "Google News")
             })
     except: pass
     return resultados
@@ -169,18 +178,18 @@ def obtener_noticias_api(keywords):
     return []
 
 # =============================================================================
-# 3. INTERFAZ DE USUARIO (Sincronizada)
+# 3. INTERFAZ de USUARIO (Sincronizada)
 # =============================================================================
 st.sidebar.title("⚙️ Control Hub")
 
 # ARCHIVO DE BULOS
 st.sidebar.markdown("### 🚩 Control de Calidad")
-if st.sidebar.button(f"🗑️ Archivo de Bulos ({len(st.session_state.bulos_list)})", key="btn_bulos"):
+if st.sidebar.button(f"🗑️ Archivo de Bulos ({len(st.session_state.bulos_list)})", key="btn_bulos_fix"):
     st.session_state.show_bulos = not st.session_state.get('show_bulos', False)
 
 st.sidebar.markdown("---")
 
-# TEMAS MAESTROS
+# BÚSQUEDA Y TEMAS
 st.sidebar.markdown("### 🔍 Temas Maestros")
 ALL_THEMES = {
     "🤖 IA Generativa": "ChatGPT\nClaude\nGemini\nSora",
@@ -268,12 +277,12 @@ with tab1:
                 st.markdown("---")
                 st.subheader("📄 Análisis Detallado")
                 for art in final_list:
-                    # USAMOS la clase CSS pero la estructura es más simple para evitar errores de React
+                    # USAMOS la clase CSS pero la estructura es la más simple posible para evitar el crash
                     st.markdown(f"""
-                        <div class="news-card">
+                        <div class="news-card-simple">
                             <div style='display: flex; justify-content: space-between;'>
                                 <span style='color:{st.session_state.accent_color}; font-weight:bold;'>{art['source']}</span>
-                                <span class='date-tag'>{art['date']}</span>
+                                <span class='date-text'>{art['date']}</span>
                             </div>
                             <h3 style='margin:5px 0;'><a href='{art['url']}' target='_blank' style='text-decoration:none; color:#1F2937;'>👉 {art['title']}</a></h3>
                             <p style='font-size:0.9rem; color:#555;'>{art.get('description', 'Sincronizado en tiempo real.')}</p>
@@ -303,4 +312,5 @@ with tab2:
             url_x = f"https://twitter.com/search?q={word.replace(' ', '%20')}&f=live"
             col.markdown(f"**{word}**")
             col.markdown(f"[Ver en X ↗️]({url_x})")
+
 
