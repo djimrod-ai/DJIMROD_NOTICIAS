@@ -4,11 +4,12 @@ import pandas as pd
 from datetime import datetime, timedelta
 import feedparser
 from concurrent.futures import ThreadPoolExecutor
+import re
 
 # =============================================================================
 # 0. CONFIGURACIÓN PRIVADA
 # =============================================================================
-MY_SECRET_API_KEY = "970be6d6772e48ada6ce78006d34e15f" 
+MY_SECRET_API_KEY = "PUT_HERE" 
 
 # =============================================================================
 # 1. SISTEMA DE DISEÑO Y ESTÉTICA
@@ -53,6 +54,13 @@ TEMAS_SOFT = {
     "🌿 Menta": ("#F0FFF0", "#2F4F4F", "#3CB371"),
     "💜 Lavanda": ("#E6E6FA", "#483D8B", "#9370DB"),
 }
+TEMAS_VARIADOS = {
+    "Dorado": ("#FFB700", "#001DDD", "#FFFFFF"),
+    "Sandia": ("#FF0000", "#1BCB00", "#7F5F00"),
+    "Cielo": ("#00AEFF", "#FFF0F5", "#FFF0F5"),
+    "Atardecer": ("#FF5500", "#FFF200", "#CE3535"),
+    "Manzana": ("#91FF00", "#644C25", "#CBFBAF"),
+}
 
 def aplicar_tema(bg, txt, acc):
     st.session_state.bg_color = bg
@@ -60,14 +68,12 @@ def aplicar_tema(bg, txt, acc):
     st.session_state.accent_color = acc
     st.rerun()
 
-# CSS simplificado para evitar el error de 'removeChild'
 st.markdown(f"""
     <style>
-    .stApp {{ background-color: {st.session_state.bg_color} !important; }}
-    [data-testid="stAppViewContainer"], [data-testid="stHeader"] {{
+    html, body, .stApp, .main, .block-container, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {{
         background-color: {st.session_state.bg_color} !important;
     }}
-    p, span, label, .stMarkdown {{
+    p, span, label, .stMarkdown, .stMarkdown p {{
         color: {st.session_state.text_color} !important;
     }}
     .main-title {{
@@ -77,26 +83,25 @@ st.markdown(f"""
         color: {st.session_state.accent_color} !important;
         margin-bottom: 20px;
     }}
-    /* Estilo de tarjeta simplificado para estabilidad */
-    .news-card-simple {{
+    .news-card {{
         background-color: white;
         padding: 15px;
         border-radius: 10px;
-        border-left: 6px solid {st.session_state.accent_color};
+        border-left: 5px solid {st.session_state.accent_color};
         margin-bottom: 15px;
         box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
         color: #1F2937 !important;
     }}
-    .date-text {{
+    .date-tag {{
         font-size: 0.75rem;
         color: #C00000;
         font-weight: bold;
     }}
-    .bulo-card-simple {{
+    .bulo-card {{
         background-color: #FFF5F5;
         padding: 15px;
         border-radius: 10px;
-        border-left: 6px solid #FF4B4B;
+        border-left: 5px solid #FF4B4B;
         margin-bottom: 15px;
         color: #7F1D1D !important;
     }}
@@ -104,7 +109,7 @@ st.markdown(f"""
     """, unsafe_allow_html=True)
 
 # =============================================================================
-# 2. MOTOR de BÚSQUEDA (Híbrido y Rápido)
+# 2. MOTOR DE BÚSQUEDA E INMEDIATEZ
 # =============================================================================
 RSS_FEEDS = {
     "El Mundo": "https://www.elmundo.es/rss/estC1.xml",
@@ -178,24 +183,29 @@ def obtener_noticias_api(keywords):
     return []
 
 # =============================================================================
-# 3. INTERFAZ de USUARIO (Sincronizada)
+# 3. INTERFAZ DE USUARIO (Súper Organizada)
 # =============================================================================
 st.sidebar.title("⚙️ Control Hub")
 
-# ARCHIVO DE BULOS
+# POSICIÓN 1: ARCHIVO DE BULOS (Uso de key fija para evitar DuplicateElementId)
 st.sidebar.markdown("### 🚩 Control de Calidad")
-if st.sidebar.button(f"🗑️ Archivo de Bulos ({len(st.session_state.bulos_list)})", key="btn_bulos_fix"):
+btn_label = f"🗑️ Archivo de Bulos ({len(st.session_state.bulos_list)})"
+if st.sidebar.button(btn_label, key="btn_bulos_fixed"):
     st.session_state.show_bulos = not st.session_state.get('show_bulos', False)
 
 st.sidebar.markdown("---")
 
-# BÚSQUEDA Y TEMAS
+# POSICIÓN 2: BÚSQUEDA Y TEMAS
 st.sidebar.markdown("### 🔍 Temas Maestros")
 ALL_THEMES = {
-    "🤖 IA Generativa": "ChatGPT\nClaude\nGemini\nSora",
-    "🪙 Cripto": "Bitcoin\nEthereum\nSolana",
-    "📈 Economía": "BCE\nBolsa\nInflación",
-    "🌍 Geopolítica": "Rusia\nChina\nOTAN",
+    "🤖 IA Generativa": "ChatGPT\nClaude\nGemini\nSora\nMidjourney\nLLM",
+    "🪙 Cripto/Blockchain": "Bitcoin\nEthereum\nSolana\nWeb3\nHalving",
+    "📈 Economía Global": "BCE\nInflación\nPIB\nBolsa de Madrid\nS&P500",
+    "🌍 Geopolítica": "Rusia\nUcrania\nChina\nOTAN\nIsrael\nGaza",
+    "⚽ Fútbol": "LaLiga\nChampions\nFichajes\nReal Madrid\nBarça",
+    "🏀 Baloncesto": "NBA\nEuroliga\nACB\nFIBA",
+    "🏎️ Motor": "F1\nFerrari\nRed Bull\nMotoGP",
+    "🎮 Gaming/Tech": "PlayStation\nXbox\nNvidia\nApple\nQualcomm",
 }
 search_q = st.sidebar.text_input("Buscar tema")
 filtered = {k: v for k, v in ALL_THEMES.items() if search_q.lower() in k.lower()}
@@ -207,21 +217,24 @@ if preset_list:
 keywords_input = st.sidebar.text_area("Palabras clave", value=st.session_state.get('keywords', "Inteligencia Artificial\nEconomía"))
 keywords_list = [k.strip() for k in keywords_input.split('\n') if k.strip()]
 
-# DISEÑO
+# POSICIÓN 3: DISEÑO (SISTEMA DE LLAVES ÚNICAS)
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🎨 Estilos")
 with st.sidebar.expander("💎 Lujo"):
     for i, (nom, col) in enumerate(TEMAS_LUJO.items()):
-        if st.button(nom, key=f"l_{i}"): aplicar_tema(*col)
+        if st.button(nom, key=f"lujo_{i}"): aplicar_tema(*col)
 with st.sidebar.expander("🏢 Corporativo"):
     for i, (nom, col) in enumerate(TEMAS_CORPORATIVOS.items()):
-        if st.button(nom, key=f"c_{i}"): aplicar_tema(*col)
+        if st.button(nom, key=f"corp_{i}"): aplicar_tema(*col)
 with st.sidebar.expander("🌙 Nocturno"):
     for i, (nom, col) in enumerate(TEMAS_NOCTURNOS.items()):
-        if st.button(nom, key=f"n_{i}"): aplicar_tema(*col)
+        if st.button(nom, key=f"noct_{i}"): aplicar_tema(*col)
 with st.sidebar.expander("🌸 Soft"):
     for i, (nom, col) in enumerate(TEMAS_SOFT.items()):
-        if st.button(nom, key=f"s_{i}"): aplicar_tema(*col)
+        if st.button(nom, key=f"soft_{i}"): aplicar_tema(*col)
+with st.sidebar.expander("🌈 Variados"):
+    for i, (nom, col) in enumerate(TEMAS_VARIADOS.items()):
+        if st.button(nom, key=f"var_{i}"): aplicar_tema(*col)
 
 st.sidebar.markdown("---")
 st.session_state.bg_color = st.sidebar.color_picker("Fondo Manual", st.session_state.bg_color)
@@ -277,12 +290,11 @@ with tab1:
                 st.markdown("---")
                 st.subheader("📄 Análisis Detallado")
                 for art in final_list:
-                    # USAMOS la clase CSS pero la estructura es la más simple posible para evitar el crash
                     st.markdown(f"""
-                        <div class="news-card-simple">
+                        <div class="news-card">
                             <div style='display: flex; justify-content: space-between;'>
                                 <span style='color:{st.session_state.accent_color}; font-weight:bold;'>{art['source']}</span>
-                                <span class='date-text'>{art['date']}</span>
+                                <span class='date-tag'>{art['date']}</span>
                             </div>
                             <h3 style='margin:5px 0;'><a href='{art['url']}' target='_blank' style='text-decoration:none; color:#1F2937;'>👉 {art['title']}</a></h3>
                             <p style='font-size:0.9rem; color:#555;'>{art.get('description', 'Sincronizado en tiempo real.')}</p>
