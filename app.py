@@ -4,15 +4,14 @@ import pandas as pd
 from datetime import datetime, timedelta
 import feedparser
 from concurrent.futures import ThreadPoolExecutor
-import re
 
 # =============================================================================
 # 0. CONFIGURACIÓN PRIVADA
 # =============================================================================
-MY_SECRET_API_KEY = "PUT_HERE" 
+MY_SECRET_API_KEY = "970be6d6772e48ada6ce78006d34e15f" 
 
 # =============================================================================
-# 1. SISTEMA DE DISEÑO Y ESTÉTICA
+# 1. SISTEMA DE DISEÑO Y ESTÉTICA (Sincronizado)
 # =============================================================================
 st.set_page_config(page_title="Intelligence Hub Editorial", page_icon="📰", layout="wide")
 
@@ -54,13 +53,6 @@ TEMAS_SOFT = {
     "🌿 Menta": ("#F0FFF0", "#2F4F4F", "#3CB371"),
     "💜 Lavanda": ("#E6E6FA", "#483D8B", "#9370DB"),
 }
-TEMAS_VARIADOS = {
-    "Dorado": ("#FFB700", "#001DDD", "#FFFFFF"),
-    "Sandia": ("#FF0000", "#1BCB00", "#7F5F00"),
-    "Cielo": ("#00AEFF", "#FFF0F5", "#FFF0F5"),
-    "Atardecer": ("#FF5500", "#FFF200", "#CE3535"),
-    "Manzana": ("#91FF00", "#644C25", "#CBFBAF"),
-}
 
 def aplicar_tema(bg, txt, acc):
     st.session_state.bg_color = bg
@@ -68,12 +60,14 @@ def aplicar_tema(bg, txt, acc):
     st.session_state.accent_color = acc
     st.rerun()
 
+# CSS optimizado para evitar errores de 'removeChild'
 st.markdown(f"""
     <style>
-    html, body, .stApp, .main, .block-container, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {{
+    .stApp {{ background-color: {st.session_state.bg_color} !important; }}
+    [data-testid="stAppViewContainer"], [data-testid="stHeader"] {{
         background-color: {st.session_state.bg_color} !important;
     }}
-    p, span, label, .stMarkdown, .stMarkdown p {{
+    p, span, label, .stMarkdown {{
         color: {st.session_state.text_color} !important;
     }}
     .main-title {{
@@ -83,33 +77,25 @@ st.markdown(f"""
         color: {st.session_state.accent_color} !important;
         margin-bottom: 20px;
     }}
-    .news-card {{
+    .news-card-style {{
         background-color: white;
         padding: 15px;
         border-radius: 10px;
-        border-left: 5px solid {st.session_state.accent_color};
+        border-left: 6px solid {st.session_state.accent_color};
         margin-bottom: 15px;
         box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
         color: #1F2937 !important;
     }}
-    .date-tag {{
+    .date-text {{
         font-size: 0.75rem;
         color: #C00000;
         font-weight: bold;
-    }}
-    .bulo-card {{
-        background-color: #FFF5F5;
-        padding: 15px;
-        border-radius: 10px;
-        border-left: 5px solid #FF4B4B;
-        margin-bottom: 15px;
-        color: #7F1D1D !important;
     }}
     </style>
     """, unsafe_allow_html=True)
 
 # =============================================================================
-# 2. MOTOR DE BÚSQUEDA E INMEDIATEZ
+# 2. MOTOR DE BÚSQUEDA (Sincronización Total)
 # =============================================================================
 RSS_FEEDS = {
     "El Mundo": "https://www.elmundo.es/rss/estC1.xml",
@@ -125,9 +111,9 @@ RSS_FEEDS = {
 def calcular_score_bulo(titulo, fuente):
     score = 0
     t = titulo.upper()
-    if any(p in t for p in ["RAZÓN POR LA QUE", "LO QUE NADIE TE CUENTA", "BOMBA", "SENSACIONAL"]): score += 2
-    if any(p in t for p in ["INMEDIATAMENTE", "SÓLO HOY", "URGENTE"]): score += 2
-    if "!!!" in t or (len([c for c in t if c.isupper()]) > 10 and len(t) < 50): score += 2
+    if any(p in t for p in ["RAZÓN POR LA QUE", "BOMBA", "SENSACIONAL", "NO CREERÁS"]): score += 2
+    if any(p in t for p in ["SÓLO HOY", "URGENTE", "INMEDIATAMENTE"]): score += 2
+    if "!!!" in t or (len([c for c in t if c.isupper()]) > 12): score += 2
     umbral = 5 if fuente in RSS_FEEDS else 3
     return score >= umbral
 
@@ -166,7 +152,7 @@ def fetch_google_news(keywords):
                 'title': entry.title, 'url': entry.link, 
                 'source': entry.source.title if hasattr(entry, 'source') else "Google News", 
                 'date': formatear_fecha(entry.published if hasattr(entry, 'published') else ""), 
-                'description': "Sincronizado en tiempo real.", 'is_bulo': calcular_score_bulo(entry.title, "Google News")
+                'description': "Búsqueda en tiempo real.", 'is_bulo': calcular_score_bulo(entry.title, "Google News")
             })
     except: pass
     return resultados
@@ -183,29 +169,24 @@ def obtener_noticias_api(keywords):
     return []
 
 # =============================================================================
-# 3. INTERFAZ DE USUARIO (Súper Organizada)
+# 3. INTERFAZ DE USUARIO (Sincronizada)
 # =============================================================================
 st.sidebar.title("⚙️ Control Hub")
 
-# POSICIÓN 1: ARCHIVO DE BULOS (Uso de key fija para evitar DuplicateElementId)
+# ARCHIVO DE BULOS
 st.sidebar.markdown("### 🚩 Control de Calidad")
-btn_label = f"🗑️ Archivo de Bulos ({len(st.session_state.bulos_list)})"
-if st.sidebar.button(btn_label, key="btn_bulos_fixed"):
+if st.sidebar.button(f"🗑️ Archivo de Bulos ({len(st.session_state.bulos_list)})", key="btn_bulos"):
     st.session_state.show_bulos = not st.session_state.get('show_bulos', False)
 
 st.sidebar.markdown("---")
 
-# POSICIÓN 2: BÚSQUEDA Y TEMAS
+# TEMAS MAESTROS
 st.sidebar.markdown("### 🔍 Temas Maestros")
 ALL_THEMES = {
-    "🤖 IA Generativa": "ChatGPT\nClaude\nGemini\nSora\nMidjourney\nLLM",
-    "🪙 Cripto/Blockchain": "Bitcoin\nEthereum\nSolana\nWeb3\nHalving",
-    "📈 Economía Global": "BCE\nInflación\nPIB\nBolsa de Madrid\nS&P500",
-    "🌍 Geopolítica": "Rusia\nUcrania\nChina\nOTAN\nIsrael\nGaza",
-    "⚽ Fútbol": "LaLiga\nChampions\nFichajes\nReal Madrid\nBarça",
-    "🏀 Baloncesto": "NBA\nEuroliga\nACB\nFIBA",
-    "🏎️ Motor": "F1\nFerrari\nRed Bull\nMotoGP",
-    "🎮 Gaming/Tech": "PlayStation\nXbox\nNvidia\nApple\nQualcomm",
+    "🤖 IA Generativa": "ChatGPT\nClaude\nGemini\nSora",
+    "🪙 Cripto": "Bitcoin\nEthereum\nSolana",
+    "📈 Economía": "BCE\nBolsa\nInflación",
+    "🌍 Geopolítica": "Rusia\nChina\nOTAN",
 }
 search_q = st.sidebar.text_input("Buscar tema")
 filtered = {k: v for k, v in ALL_THEMES.items() if search_q.lower() in k.lower()}
@@ -217,24 +198,21 @@ if preset_list:
 keywords_input = st.sidebar.text_area("Palabras clave", value=st.session_state.get('keywords', "Inteligencia Artificial\nEconomía"))
 keywords_list = [k.strip() for k in keywords_input.split('\n') if k.strip()]
 
-# POSICIÓN 3: DISEÑO (SISTEMA DE LLAVES ÚNICAS)
+# DISEÑO
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🎨 Estilos")
 with st.sidebar.expander("💎 Lujo"):
     for i, (nom, col) in enumerate(TEMAS_LUJO.items()):
-        if st.button(nom, key=f"lujo_{i}"): aplicar_tema(*col)
+        if st.button(nom, key=f"l_{i}"): aplicar_tema(*col)
 with st.sidebar.expander("🏢 Corporativo"):
     for i, (nom, col) in enumerate(TEMAS_CORPORATIVOS.items()):
-        if st.button(nom, key=f"corp_{i}"): aplicar_tema(*col)
+        if st.button(nom, key=f"c_{i}"): aplicar_tema(*col)
 with st.sidebar.expander("🌙 Nocturno"):
     for i, (nom, col) in enumerate(TEMAS_NOCTURNOS.items()):
-        if st.button(nom, key=f"noct_{i}"): aplicar_tema(*col)
+        if st.button(nom, key=f"n_{i}"): aplicar_tema(*col)
 with st.sidebar.expander("🌸 Soft"):
     for i, (nom, col) in enumerate(TEMAS_SOFT.items()):
-        if st.button(nom, key=f"soft_{i}"): aplicar_tema(*col)
-with st.sidebar.expander("🌈 Variados"):
-    for i, (nom, col) in enumerate(TEMAS_VARIADOS.items()):
-        if st.button(nom, key=f"var_{i}"): aplicar_tema(*col)
+        if st.button(nom, key=f"s_{i}"): aplicar_tema(*col)
 
 st.sidebar.markdown("---")
 st.session_state.bg_color = st.sidebar.color_picker("Fondo Manual", st.session_state.bg_color)
@@ -290,6 +268,7 @@ with tab1:
                 st.markdown("---")
                 st.subheader("📄 Análisis Detallado")
                 for art in final_list:
+                    # USAMOS la clase CSS pero la estructura es más simple para evitar errores de React
                     st.markdown(f"""
                         <div class="news-card">
                             <div style='display: flex; justify-content: space-between;'>
@@ -324,3 +303,4 @@ with tab2:
             url_x = f"https://twitter.com/search?q={word.replace(' ', '%20')}&f=live"
             col.markdown(f"**{word}**")
             col.markdown(f"[Ver en X ↗️]({url_x})")
+
