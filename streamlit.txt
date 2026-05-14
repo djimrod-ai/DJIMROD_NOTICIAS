@@ -2,4 +2,3 @@ streamlit
 requests
 pandas
 feedparser
-python-dateutil
